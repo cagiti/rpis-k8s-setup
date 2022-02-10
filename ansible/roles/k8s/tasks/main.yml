@@ -1,0 +1,105 @@
+---
+- name: install containerd
+  apt:
+    name: containerd
+
+- name: containerd directory
+  file:
+    path: /etc/containerd
+    state: directory
+
+- name: copy containerd config
+  copy:
+    src: config.toml
+    dest: /etc/containerd/config.toml
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+
+- name: add k8s gpg key
+  apt_key:
+    url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+    state: present
+
+- name: add k8s apt repo
+  apt_repository:
+    repo: deb http://apt.kubernetes.io/ kubernetes-xenial main
+    state: present
+
+- name: Install k8s packages
+  apt:
+    pkg: 
+    - kubeadm
+    - kubelet
+    - kubectl
+  register: k8s_installed
+
+- name: cgroup configuration
+  copy:
+    src: cmdline.txt
+    dest: /boot/firmware/cmdline.txt
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: disable swap short term
+  shell: |
+    swapoff -a
+  when: k8s_installed is changed
+
+- name: disable swap long term
+  replace:
+    path: /etc/fstab
+    regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+    replace: '# \1'
+  when: k8s_installed is changed
+
+- name: reboot
+  reboot:
+    msg: "Reboot initiated by Ansible"
+    connect_timeout: 5
+    reboot_timeout: 600
+    pre_reboot_delay: 0
+    post_reboot_delay: 30
+    test_command: whoami
+  when: k8s_installed is changed
+
+- name: containerd configuration
+  copy:
+    src: containerd.conf
+    dest: /etc/modules-load.d/containerd.conf
+    owner: root
+    group: root
+    mode: '0644'
+  register: containerd_config_applied
+
+- name: modprobe overlay
+  shell: |
+    modprobe overlay
+  when: containerd_config_applied is changed
+
+- name: modprobe br_netfilter
+  shell: |
+    modprobe br_netfilter
+  when: containerd_config_applied is changed
+
+- name: kubernetes cri configuration
+  copy:
+    src: 99-kubernetes-cri.conf
+    dest: /etc/sysctl.d/99-kubernetes-cri.conf
+    owner: root
+    group: root
+    mode: '0644'
+  register: k8s_cri_config_applied
+
+- name: apply sysctl params
+  shell: |
+    sysctl --system
+  when: k8s_cri_config_applied is changed
+
+- name: reload containerd
+  systemd:
+    name: containerd
+    state: restarted
+  when: containerd_config_applied is changed

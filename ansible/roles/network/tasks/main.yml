@@ -1,0 +1,17 @@
+---
+- name: 'configure networking'
+  template: 
+    src: 99_config.yaml.tpl
+    dest: /etc/netplan/99_config.yaml
+  register: network
+    
+- name: 'Applying Netplan Configuration'
+  command: netplan apply
+  when: network.changed
+  become: yes
+  become_method: sudo
+
+- name: Generate hosts file
+  template:
+    src: hosts.j2
+    dest: /etc/hosts

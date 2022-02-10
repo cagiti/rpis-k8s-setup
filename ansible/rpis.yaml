@@ -1,0 +1,7 @@
+---
+- hosts: rpis
+  roles:
+    - os
+    - network
+    - k8s
+    - {role: k8s-controller, when: controller}

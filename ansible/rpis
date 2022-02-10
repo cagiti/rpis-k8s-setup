@@ -1,0 +1,14 @@
+rpis:
+  hosts:
+    kc1:
+      controller: true
+      worker: false
+      ansible_host: 10.0.0.76
+    kw1:
+      controller: false
+      worker: true
+      ansible_host: 10.0.0.77
+    kw2:
+      controller: false
+      worker: true
+      ansible_host: 10.0.0.78

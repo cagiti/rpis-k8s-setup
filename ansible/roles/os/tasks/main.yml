@@ -1,0 +1,21 @@
+---
+- name: update time zone
+  timezone:
+    name: "{{ tz }}"
+
+- name: upgrade os
+  apt:
+    update_cache: yes
+    upgrade: dist
+  become: yes
+
+- name: update packages
+  apt:
+    name: "*"
+    state: latest
+    update_cache: yes
+  become: yes
+
+- name: hostname
+  hostname:
+    name: "{{ inventory_hostname }}"
